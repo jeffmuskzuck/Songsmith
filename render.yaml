@@ -2,7 +2,7 @@ services:
   - type: web
     name: ai-songsmith
     env: node
-    rootDir: backend
+    rootDirectory: backend
     plan: free
     buildCommand: npm install
     startCommand: npm start

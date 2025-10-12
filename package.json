@@ -1,0 +1,21 @@
+{
+  "name": "ai-songsmith",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Website with an AI-like backend that generates placeholder songs.",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
+  },
+  "keywords": ["music", "songs", "express", "prototype"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

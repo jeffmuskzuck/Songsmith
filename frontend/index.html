@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Songsmith</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>AI Songsmith</h1>
+    <form id="song-form">
+      <div class="field">
+        <label for="genre">Genre</label>
+        <select id="genre" name="genre" required>
+          <option value="pop">Pop</option>
+          <option value="rock">Rock</option>
+          <option value="hiphop">Hip Hop</option>
+          <option value="jazz">Jazz</option>
+          <option value="country">Country</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="duration">Duration</label>
+        <input id="duration" name="duration" type="text" placeholder="e.g. 2:30" required />
+      </div>
+      <div class="field">
+        <label for="prompt">Lyrics theme</label>
+        <textarea id="prompt" name="prompt" rows="3" placeholder="What should the lyrics be about?"></textarea>
+      </div>
+      <div class="field">
+        <label for="count">How many suggestions?</label>
+        <input id="count" name="count" type="number" value="5" min="1" max="10" />
+      </div>
+      <button type="submit">Generate Songs</button>
+    </form>
+
+    <section id="results" class="results" aria-live="polite"></section>
+    <div class="actions">
+      <button id="more" type="button" disabled>More suggestions</button>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

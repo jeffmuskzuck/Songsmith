@@ -55,6 +55,14 @@ app.post('/api/generate', (req, res) => {
   res.json({ songs });
 });
 
+// Added GET support for /api/generate to allow link-based access and query params
+app.get('/api/generate', (req, res) => {
+  const { genre = 'pop', duration = '2:30', prompt = '', count = 5 } = req.query || {};
+  const n = Math.min(Math.max(Number(count) || 5, 1), 10);
+  const songs = Array.from({ length: n }, (_, i) => makePlaceholderSong({ genre, duration, prompt }, i));
+  res.json({ songs });
+});
+
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 // Serve static frontend assets

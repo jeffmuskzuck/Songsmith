@@ -2,15 +2,52 @@ const form = document.getElementById('song-form');
 const results = document.getElementById('results');
 const moreBtn = document.getElementById('more');
 
+// Browser speech synthesis for audible playback
+const synth = 'speechSynthesis' in window ? window.speechSynthesis : null;
+let currentUtterance = null;
+
 let lastPayload = null;
 const API_URL = '/api/generate';
+
+function stopPlayback() {
+  if (synth) {
+    synth.cancel();
+  }
+  currentUtterance = null;
+}
+
+function playLyrics(text) {
+  if (!synth) return alert('Audio playback is not supported in this browser.');
+  stopPlayback();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.0; // 0.1–10
+  u.pitch = 1.0; // 0–2
+  u.onend = () => { currentUtterance = null; };
+  currentUtterance = u;
+  synth.speak(u);
+}
 
 function renderSongs(songs) {
   results.innerHTML = '';
   songs.forEach((s) => {
     const el = document.createElement('div');
     el.className = 'song';
-    el.innerHTML = `<h3>${s.title}</h3><small>${s.genre} • ${s.duration}</small><pre>${s.lyrics}</pre>`;
+    el.innerHTML = `
+      <h3>${s.title}</h3>
+      <small>${s.genre} • ${s.duration}</small>
+      <div style="margin: 8px 0; display: flex; gap: 8px;">
+        <button class="play">Play</button>
+        <button class="stop">Stop</button>
+      </div>
+      <pre>${s.lyrics}</pre>
+    `;
+
+    const playBtn = el.querySelector('.play');
+    const stopBtn = el.querySelector('.stop');
+
+    playBtn.addEventListener('click', () => playLyrics(s.lyrics));
+    stopBtn.addEventListener('click', () => stopPlayback());
+
     results.appendChild(el);
   });
 }

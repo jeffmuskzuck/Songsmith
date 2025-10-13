@@ -6,6 +6,9 @@ const stopAllBtn = document.getElementById('stop-all');
 let lastPayload = null;
 const API_URL = '/api/generate';
 
+// Track DOM and timers per song for lyric highlighting
+const songDom = new Map(); // songId -> { container, lastWord: number|null, timers: [] }
+
 // --- Simple WebAudio synth engine ---
 let audioCtx = null;
 let activeNodes = [];
@@ -128,11 +131,30 @@ function scheduleVocalLead(ctx, t, freq, dur, char) {
   activeNodes.push(o, vibrato, vGain, bp, g);
 }
 
+function lyricsToSpans(lyrics) {
+  let wi = 0;
+  const lines = String(lyrics || '').split(/\n+/);
+  let html = '';
+  for (let li = 0; li < lines.length; li++) {
+    const words = lines[li].trim().length ? lines[li].split(/(\s+)/) : [];
+    for (const token of words) {
+      if (/^\s+$/.test(token)) { html += token; continue; }
+      if (token === '') continue;
+      html += `<span class="w" data-wi="${wi}">${token}</span>`;
+      wi++;
+    }
+    if (li < lines.length - 1) html += '\n';
+  }
+  return { html, total: wi };
+}
+
 function buildArrangementFromLyrics(lyrics, bpm = 95, keyRootMidi = 60) {
   const degrees = scaleDegrees(keyRootMidi);
   const lines = String(lyrics || '').split(/\n+/).filter(Boolean);
   const arrangement = [];
+  const markers = [];
   let beat = 0;
+  let windex = 0;
   for (const line of lines) {
     // pick a base degree for the line
     const hash = Array.from(line).reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -143,7 +165,9 @@ function buildArrangementFromLyrics(lyrics, bpm = 95, keyRootMidi = 60) {
       const ch = (w.match(/[aeiou]/i) || ['a'])[0];
       const deg = degrees[(hash + i) % degrees.length];
       const midi = deg + (i % 4 === 3 ? 12 : 0); // little leaps
-      arrangement.push({ type: 'lead', beat, midi, vowel: ch, len: 0.5 });
+      arrangement.push({ type: 'lead', beat, midi, vowel: ch, len: 0.5, windex });
+      markers.push({ beat, windex });
+      windex++;
       beat += 0.5; // eighth-note per word
     }
     beat = Math.ceil(beat); // snap to next beat
@@ -160,14 +184,41 @@ function buildArrangementFromLyrics(lyrics, bpm = 95, keyRootMidi = 60) {
       arrangement.push({ type: 'chord', beat: b, midi: root, len: 3.8 });
     }
   }
-  return { arrangement, bpm };
+  return { arrangement, bpm, markers };
+}
+
+function clearSongTimers(songId) {
+  const st = songDom.get(songId);
+  if (!st) return;
+  (st.timers || []).forEach((id) => clearTimeout(id));
+  st.timers = [];
+}
+
+function setActiveWord(songId, windex) {
+  const st = songDom.get(songId);
+  if (!st) return;
+  const root = st.container;
+  if (st.lastWord != null) {
+    const prev = root.querySelector(`[data-wi="${st.lastWord}"]`);
+    if (prev) prev.classList.remove('on');
+  }
+  if (windex != null && windex >= 0) {
+    const cur = root.querySelector(`[data-wi="${windex}"]`);
+    if (cur) cur.classList.add('on');
+    st.lastWord = windex;
+  } else {
+    st.lastWord = null;
+  }
 }
 
 function playSong(song) {
   const ctx = getCtx();
   const t0 = ctx.currentTime + 0.1;
-  const { arrangement, bpm } = buildArrangementFromLyrics(song.lyrics, 95);
+const { arrangement, bpm, markers } = buildArrangementFromLyrics(song.lyrics, 95);
   const spb = 60 / bpm;
+
+  // Clear any prior UI timers for this song
+  clearSongTimers(song.id);
 
   arrangement.forEach((ev) => {
     const t = t0 + ev.beat * spb;
@@ -180,6 +231,22 @@ function playSong(song) {
       case 'lead': return scheduleVocalLead(ctx, t, noteToFreq(ev.midi), ev.len * spb, ev.vowel);
     }
   });
+
+  // Schedule lyric highlights using the same clock
+  const st = songDom.get(song.id);
+  if (st) {
+    markers.forEach((mk) => {
+      const t = t0 + mk.beat * spb;
+      const ms = Math.max(0, (t - ctx.currentTime) * 1000);
+      const tid = setTimeout(() => setActiveWord(song.id, mk.windex), ms);
+      st.timers.push(tid);
+    });
+    const lastBeat = markers.length ? Math.max(...markers.map(m => m.beat)) : 0;
+    const endT = t0 + (lastBeat + 1) * spb;
+    const endMs = Math.max(0, (endT - ctx.currentTime) * 1000);
+    const tid = setTimeout(() => setActiveWord(song.id, null), endMs);
+    st.timers.push(tid);
+  }
 }
 
 function renderSongs(songs) {
@@ -187,16 +254,19 @@ function renderSongs(songs) {
   songs.forEach((s) => {
     const el = document.createElement('div');
     el.className = 'song';
+const { html } = lyricsToSpans(s.lyrics);
     el.innerHTML = `
       <h3>${s.title}</h3>
       <small>${s.genre} • ${s.duration}</small>
       <div style="margin:0.5rem 0;">
         <button class="play">Play</button>
       </div>
-      <pre>${s.lyrics}</pre>
+      <div class="lyrics" data-song-id="${s.id}">${html}</div>
     `;
-    const playBtn = el.querySelector('.play');
+const playBtn = el.querySelector('.play');
     playBtn.addEventListener('click', () => playSong(s));
+    const container = el.querySelector('.lyrics');
+    songDom.set(s.id, { container, lastWord: null, timers: [] });
     results.appendChild(el);
   });
 }
@@ -237,4 +307,8 @@ moreBtn.addEventListener('click', () => {
 
 stopAllBtn.addEventListener('click', () => {
   stopAllAudio();
+  songDom.forEach((st, songId) => {
+    clearSongTimers(songId);
+    setActiveWord(songId, null);
+  });
 });

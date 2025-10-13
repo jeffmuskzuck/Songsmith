@@ -14,3 +14,6 @@ button[disabled] { opacity: 0.6; cursor: not-allowed; }
 .song h3 { margin: 0 0 0.5rem 0; }
 .song pre { white-space: pre-wrap; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 .actions { margin-top: 0.75rem; }
+.lyrics { white-space: pre-wrap; line-height: 1.6; }
+.lyrics .w { padding: 0 2px; border-radius: 3px; transition: background-color 80ms linear; }
+.lyrics .w.on { background: rgba(250, 204, 21, 0.35); }

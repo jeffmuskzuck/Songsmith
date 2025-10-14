@@ -1,30 +1,89 @@
 const form = document.getElementById('song-form');
 const results = document.getElementById('results');
 const moreBtn = document.getElementById('more');
-
-// Browser speech synthesis for audible playback
-const synth = 'speechSynthesis' in window ? window.speechSynthesis : null;
-let currentUtterance = null;
+const stopAllBtn = document.getElementById('stop-all');
 
 let lastPayload = null;
 const API_URL = '/api/generate';
 
-function stopPlayback() {
-  if (synth) {
-    synth.cancel();
+// Voice playback via browser TTS
+const synth = 'speechSynthesis' in window ? window.speechSynthesis : null;
+let currentUtterance = null;
+
+// Melody playback via Web Audio API
+let audioCtx = null;
+let activeOscs = [];
+
+function ensureAudio() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = AC ? new AC() : null;
   }
-  currentUtterance = null;
+  return audioCtx;
 }
 
-function playLyrics(text) {
+async function resumeAudio() {
+  const ctx = ensureAudio();
+  if (!ctx) return null;
+  if (ctx.state !== 'running') {
+    try { await ctx.resume(); } catch (e) { console.warn('Audio resume failed', e); }
+  }
+  return ctx;
+}
+
+function stopAllAudio() {
+  if (synth) synth.cancel();
+  currentUtterance = null;
+  for (const osc of activeOscs) {
+    try { osc.stop(); } catch (_) {}
+  }
+  activeOscs = [];
+}
+
+function playVoice(text) {
   if (!synth) return alert('Audio playback is not supported in this browser.');
-  stopPlayback();
+  stopAllAudio();
   const u = new SpeechSynthesisUtterance(text);
-  u.rate = 1.0; // 0.1–10
-  u.pitch = 1.0; // 0–2
+  u.rate = 1.0;
+  u.pitch = 1.0;
   u.onend = () => { currentUtterance = null; };
   currentUtterance = u;
   synth.speak(u);
+}
+
+function noteFreq(semitonesFromA) {
+  return 220 * Math.pow(2, semitonesFromA / 12);
+}
+
+async function playMelodyFromSeed(seed) {
+  const ctx = await resumeAudio();
+  if (!ctx) return alert('Web Audio is not supported in this browser.');
+  // Simple pleasant pentatonic mapping from seed
+  const scale = [0, 2, 4, 7, 9];
+  const chars = String(seed || 'melody').split('');
+  let t = ctx.currentTime + 0.05;
+  const dur = 0.22;
+  const gain = ctx.createGain();
+  gain.gain.value = 0.2;
+  gain.connect(ctx.destination);
+  for (let i = 0; i < Math.min(32, chars.length * 2); i++) {
+    const ch = chars[i % chars.length].charCodeAt(0);
+    const degree = scale[ch % scale.length];
+    const octave = 0 + ((ch >> 3) % 3);
+    const freq = noteFreq(degree + 12 * octave);
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    const v = ctx.createGain();
+    v.gain.setValueAtTime(0.0, t);
+    v.gain.linearRampToValueAtTime(0.35, t + 0.02);
+    v.gain.linearRampToValueAtTime(0.0, t + dur);
+    osc.frequency.value = freq;
+    osc.connect(v); v.connect(gain);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+    activeOscs.push(osc);
+    t += dur * 0.9;
+  }
 }
 
 function renderSongs(songs) {
@@ -35,18 +94,21 @@ function renderSongs(songs) {
     el.innerHTML = `
       <h3>${s.title}</h3>
       <small>${s.genre} • ${s.duration}</small>
-      <div style="margin: 8px 0; display: flex; gap: 8px;">
-        <button class="play">Play</button>
+      <div style="margin: 8px 0; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="play-voice">Play Voice</button>
+        <button class="play-melody">Play Melody</button>
         <button class="stop">Stop</button>
       </div>
       <pre>${s.lyrics}</pre>
     `;
 
-    const playBtn = el.querySelector('.play');
+    const playVoiceBtn = el.querySelector('.play-voice');
+    const playMelodyBtn = el.querySelector('.play-melody');
     const stopBtn = el.querySelector('.stop');
 
-    playBtn.addEventListener('click', () => playLyrics(s.lyrics));
-    stopBtn.addEventListener('click', () => stopPlayback());
+    playVoiceBtn.addEventListener('click', () => playVoice(s.lyrics));
+    playMelodyBtn.addEventListener('click', () => playMelodyFromSeed(`${s.title} ${s.genre} ${s.duration}`));
+    stopBtn.addEventListener('click', () => stopAllAudio());
 
     results.appendChild(el);
   });
@@ -85,3 +147,100 @@ form.addEventListener('submit', (e) => {
 moreBtn.addEventListener('click', () => {
   if (lastPayload) generate(lastPayload);
 });
+
+// --- Audio enhancement: add Play Melody button and robust playback ---
+let audioCtx = null;
+let activeOscs = [];
+
+function ensureAudio() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = AC ? new AC() : null;
+  }
+  return audioCtx;
+}
+
+async function resumeAudio() {
+  const ctx = ensureAudio();
+  if (!ctx) return null;
+  if (ctx.state !== 'running') {
+    try { await ctx.resume(); } catch (e) { console.warn('Audio resume failed', e); }
+  }
+  return ctx;
+}
+
+function stopAllAudio() {
+  if (synth) synth.cancel();
+  currentUtterance = null;
+  for (const osc of activeOscs) { try { osc.stop(); } catch (_) {} }
+  activeOscs = [];
+}
+
+function noteFreq(semitonesFromA) {
+  return 220 * Math.pow(2, semitonesFromA / 12);
+}
+
+async function playMelodyFromSeed(seed) {
+  const ctx = await resumeAudio();
+  if (!ctx) return alert('Web Audio is not supported in this browser.');
+  const scale = [0, 2, 4, 7, 9];
+  const chars = String(seed || 'melody').split('');
+  let t = ctx.currentTime + 0.05;
+  const dur = 0.22;
+  const gain = ctx.createGain();
+  gain.gain.value = 0.2;
+  gain.connect(ctx.destination);
+  for (let i = 0; i < Math.min(32, chars.length * 2); i++) {
+    const ch = chars[i % chars.length].charCodeAt(0);
+    const degree = scale[ch % scale.length];
+    const octave = 0 + ((ch >> 3) % 3);
+    const freq = noteFreq(degree + 12 * octave);
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    const v = ctx.createGain();
+    v.gain.setValueAtTime(0.0, t);
+    v.gain.linearRampToValueAtTime(0.35, t + 0.02);
+    v.gain.linearRampToValueAtTime(0.0, t + dur);
+    osc.frequency.value = freq;
+    osc.connect(v); v.connect(gain);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+    activeOscs.push(osc);
+    t += dur * 0.9;
+  }
+}
+
+function addMelodyButtons() {
+  const cards = Array.from(results.querySelectorAll('.song'));
+  cards.forEach((el) => {
+    if (el.dataset.melodyReady === '1') return;
+    const title = (el.querySelector('h3') || {}).textContent || '';
+    const meta = (el.querySelector('small') || {}).textContent || '';
+    const seed = `${title} ${meta}`;
+    const controls = (el.querySelector('button.play') || {}).parentElement || el;
+    if (controls && !el.querySelector('.play-melody')) {
+      const btn = document.createElement('button');
+      btn.className = 'play-melody';
+      btn.textContent = 'Play Melody';
+      btn.addEventListener('click', () => playMelodyFromSeed(seed));
+      // Insert before Stop if present, else append
+      const stopBtn = controls.querySelector('.stop');
+      if (stopBtn) controls.insertBefore(btn, stopBtn); else controls.appendChild(btn);
+    }
+    el.dataset.melodyReady = '1';
+  });
+}
+
+// Observe results for changes and add buttons each time songs render
+const __observer = new MutationObserver(() => addMelodyButtons());
+__observer.observe(results, { childList: true });
+// Also add immediately if content already present
+addMelodyButtons();
+
+// Optional Stop All button handler if present
+const stopAllBtn = document.getElementById('stop-all');
+if (stopAllBtn) stopAllBtn.addEventListener('click', () => stopAllAudio());
+
+if (stopAllBtn) {
+  stopAllBtn.addEventListener('click', () => stopAllAudio());
+}

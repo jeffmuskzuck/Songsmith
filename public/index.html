@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Songsmith</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>AI Songsmith</h1>
+    <form id="song-form">
+      <label>
+        Genre
+        <input name="genre" placeholder="pop" />
+      </label>
+      <label>
+        Duration
+        <input name="duration" placeholder="2:30" />
+      </label>
+      <label>
+        Prompt / Theme
+        <input name="prompt" placeholder="city lights" />
+      </label>
+      <label>
+        How many?
+        <input name="count" type="number" min="1" max="12" value="4" />
+      </label>
+      <button type="submit">Generate</button>
+    </form>
+
+    <section>
+      <div class="actions">
+        <button id="more" disabled>Generate more</button>
+      </div>
+      <div id="results" class="grid"></div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

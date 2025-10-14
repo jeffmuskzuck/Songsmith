@@ -9,6 +9,29 @@
 <body>
   <main class="container">
     <h1>AI Songsmith</h1>
+
+    <section class="controls" style="margin-bottom:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+      <label>Volume
+        <input id="vol" type="range" min="0" max="100" value="20" />
+      </label>
+      <label>Instrument
+        <select id="instrument">
+          <option value="sine">Sine</option>
+          <option value="triangle">Triangle</option>
+          <option value="sawtooth">Sawtooth</option>
+        </select>
+      </label>
+      <label>Voice Rate
+        <input id="voiceRate" type="range" min="50" max="200" value="100" />
+      </label>
+      <label>Voice Pitch
+        <input id="voicePitch" type="range" min="50" max="200" value="100" />
+      </label>
+      <label>
+        <input id="withBacking" type="checkbox" checked /> Backing
+      </label>
+    </section>
+
     <form id="song-form">
       <div class="field">
         <label for="genre">Genre</label>
@@ -42,6 +65,38 @@
   </main>
 
   <script src="audio.js"></script>
+  <script>
+    // initialize audio options from controls on first load
+    window.addEventListener('DOMContentLoaded', () => {
+      const vol = document.getElementById('vol');
+      const instrument = document.getElementById('instrument');
+      const voiceRate = document.getElementById('voiceRate');
+      const voicePitch = document.getElementById('voicePitch');
+      const withBacking = document.getElementById('withBacking');
+      if (window.setAudioOptions) {
+        window.setAudioOptions({
+          volume: Number((vol?.value||20)) / 100,
+          instrument: instrument?.value || 'sine',
+          voiceRate: Number((voiceRate?.value||100)) / 100,
+          voicePitch: Number((voicePitch?.value||100)) / 100,
+        });
+      }
+      function update() {
+        window.setAudioOptions?.({
+          volume: Number(vol.value) / 100,
+          instrument: instrument.value,
+          voiceRate: Number(voiceRate.value) / 100,
+          voicePitch: Number(voicePitch.value) / 100,
+        });
+      }
+      vol?.addEventListener('input', update);
+      instrument?.addEventListener('change', update);
+      voiceRate?.addEventListener('input', update);
+      voicePitch?.addEventListener('input', update);
+      withBacking?.addEventListener('change', () => {});
+      window.__withBacking = () => !!withBacking?.checked;
+    });
+  </script>
   <script src="app.js"></script>
 </body>
 </html>

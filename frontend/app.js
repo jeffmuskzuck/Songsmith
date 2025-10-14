@@ -86,6 +86,15 @@ async function playMelodyFromSeed(seed) {
   }
 }
 
+function seedForSong(s) {
+  const key = `songseed:${s.id || s.title}`;
+  const persisted = localStorage.getItem(key);
+  if (persisted) return persisted;
+  const seed = `${s.title} ${s.genre} ${s.duration}`;
+  localStorage.setItem(key, seed);
+  return seed;
+}
+
 function renderSongs(songs) {
   results.innerHTML = '';
   songs.forEach((s) => {
@@ -95,6 +104,7 @@ function renderSongs(songs) {
       <h3>${s.title}</h3>
       <small>${s.genre} • ${s.duration}</small>
       <div style="margin: 8px 0; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="play-combined">Play Combined</button>
         <button class="play-voice">Play Voice</button>
         <button class="play-melody">Play Melody</button>
         <button class="stop">Stop</button>
@@ -102,13 +112,16 @@ function renderSongs(songs) {
       <pre>${s.lyrics}</pre>
     `;
 
+    const playCombinedBtn = el.querySelector('.play-combined');
     const playVoiceBtn = el.querySelector('.play-voice');
     const playMelodyBtn = el.querySelector('.play-melody');
     const stopBtn = el.querySelector('.stop');
 
-    playVoiceBtn.addEventListener('click', () => playVoice(s.lyrics));
-    playMelodyBtn.addEventListener('click', () => playMelodyFromSeed(`${s.title} ${s.genre} ${s.duration}`));
-    stopBtn.addEventListener('click', () => stopAllAudio());
+    const seed = seedForSong(s);
+    playCombinedBtn.addEventListener('click', () => window.playCombined(s.lyrics, seed, window.__withBacking?.() ?? true));
+    playVoiceBtn.addEventListener('click', () => window.playVoice(s.lyrics));
+    playMelodyBtn.addEventListener('click', () => window.playFromLyrics(s.lyrics, seed, window.__withBacking?.() ?? true));
+    stopBtn.addEventListener('click', () => window.stopAllAudio());
 
     results.appendChild(el);
   });

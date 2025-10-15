@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 (async function ensureAudioModule() {
   if (typeof window.playFromLyrics === 'function' && typeof window.playCombined === 'function') return;
 
@@ -9,6 +10,21 @@
     document.head.appendChild(s);
   });
 })();
+=======
+// Ensure audio.js is present before anything tries to use it (fallback loader)
+(function ensureAudioModule() {
+  if (typeof window.playFromLyrics === 'function' && typeof window.playCombined === 'function') return;
+  if (window.__audioJsLoading) return;
+  window.__audioJsLoading = true;
+  const s = document.createElement('script');
+  s.src = 'audio.js?v=3';
+  s.async = false;
+  s.onload = () => { window.__audioJsLoading = false; };
+  s.onerror = () => { window.__audioJsLoading = false; console.warn('Failed to load audio.js'); };
+  document.head.appendChild(s);
+})();
+
+>>>>>>> 141d332 (fix(frontend): ensure audio.js loads before app.js; add fallbacks and autoplay resume for Play Melody/Combined)
 const form = document.getElementById('song-form');
 const results = document.getElementById('results');
 const moreBtn = document.getElementById('more');
@@ -104,6 +120,19 @@ function seedForSong(s) {
   const seed = `${s.title} ${s.genre} ${s.duration}`;
   localStorage.setItem(key, seed);
   return seed;
+}
+
+// Provide fallbacks if audio.js didn’t load (minimal melody/voice)
+window.playVoice = window.playVoice || playVoice;
+window.stopAllAudio = window.stopAllAudio || stopAllAudio;
+if (typeof window.playFromLyrics !== 'function') {
+  window.playFromLyrics = (lyrics, seed) => playMelodyFromSeed(seed || 'melody');
+}
+if (typeof window.playCombined !== 'function') {
+  window.playCombined = (lyrics, seed, withBacking) => {
+    window.playFromLyrics(lyrics, seed, withBacking);
+    window.playVoice(lyrics);
+  };
 }
 
 function renderSongs(songs) {

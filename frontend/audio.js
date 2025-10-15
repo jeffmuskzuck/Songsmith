@@ -248,6 +248,7 @@
   window.setAudioOptions = setAudioOptions;
   window.getAudioOptions = getAudioOptions;
   window.playVoice = playVoice;
+  window.resumeAudio = resumeAudio;
   window.playMelodyFromSeed = async function(seed){
     const ctx = await resumeAudio();
     if (!ctx) return alert('Web Audio is not supported in this browser.');

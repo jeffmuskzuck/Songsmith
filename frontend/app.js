@@ -118,9 +118,17 @@ function renderSongs(songs) {
     const stopBtn = el.querySelector('.stop');
 
     const seed = seedForSong(s);
-    playCombinedBtn.addEventListener('click', () => window.playCombined(s.lyrics, seed, window.__withBacking?.() ?? true));
+    playCombinedBtn.addEventListener('click', async () => {
+      try { await window.resumeAudio?.(); } catch {}
+      if (!window.playCombined) { alert('Audio module not loaded'); return; }
+      window.playCombined(s.lyrics, seed, window.__withBacking?.() ?? true);
+    });
     playVoiceBtn.addEventListener('click', () => window.playVoice(s.lyrics));
-    playMelodyBtn.addEventListener('click', () => window.playFromLyrics(s.lyrics, seed, window.__withBacking?.() ?? true));
+    playMelodyBtn.addEventListener('click', async () => {
+      try { await window.resumeAudio?.(); } catch {}
+      if (!window.playFromLyrics) { alert('Audio module not loaded'); return; }
+      window.playFromLyrics(s.lyrics, seed, window.__withBacking?.() ?? true);
+    });
     stopBtn.addEventListener('click', () => window.stopAllAudio());
 
     results.appendChild(el);

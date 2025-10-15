@@ -1,3 +1,14 @@
+(async function ensureAudioModule() {
+  if (typeof window.playFromLyrics === 'function' && typeof window.playCombined === 'function') return;
+
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'audio.js?v=3';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Failed to load audio.js'));
+    document.head.appendChild(s);
+  });
+})();
 const form = document.getElementById('song-form');
 const results = document.getElementById('results');
 const moreBtn = document.getElementById('more');
